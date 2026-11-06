@@ -15,6 +15,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { QueryUserDto } from './dto/query-user.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -45,6 +46,15 @@ export class UsersController {
   @ApiOperation({ summary: 'Obtener perfil del usuario autenticado' })
   async getProfile(@CurrentUser('sub') userId: number) {
     return this.usersService.findById(userId);
+  }
+
+  @Patch('profile')
+  @ApiOperation({ summary: 'Actualizar el perfil del usuario autenticado' })
+  async updateProfile(
+    @CurrentUser('sub') userId: number,
+    @Body() updateProfileDto: UpdateProfileDto,
+  ) {
+    return this.usersService.updateProfile(userId, updateProfileDto);
   }
 
   @Get(':id')

@@ -19,10 +19,13 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(payload: JwtPayload) {
-    const user = await this.usersService.findById(payload.sub);
-    if (!user || !user.isActive) {
+    const user = await this.usersService.findActiveById(payload.sub);
+    if (!user) {
       throw new UnauthorizedException('Usuario no activo o no encontrado');
     }
-    return { sub: payload.sub, email: payload.email, role: payload.role };
+
+    // Se toma el rol actual desde la base de datos para que los cambios
+    // de permisos tengan efecto inmediato.
+    return { sub: user.id, email: user.email, role: user.role };
   }
 }

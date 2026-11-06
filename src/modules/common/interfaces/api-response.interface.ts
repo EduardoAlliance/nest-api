@@ -27,11 +27,3 @@ export interface JwtPayload {
   email: string;
   role: string;
 }
-
-export interface OAuthClient {
-  id: string;
-  secret: string;
-  name: string;
-  redirectUris: string[];
-  isConfidential: boolean;
-}

@@ -6,24 +6,30 @@ import {
   HttpStatus,
   UseGuards,
   Req,
+  Res,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import type { Request } from 'express';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import type { Request, Response, CookieOptions } from 'express';
+import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { OAuthAuthorizeDto } from './dto/oauth-authorize.dto';
-import { OAuthTokenDto } from './dto/oauth-token.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { RefreshAuthGuard } from './guards/refresh-auth.guard';
 
+const REFRESH_COOKIE_NAME = 'refreshToken';
+const REFRESH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+
 @ApiTags('Autenticación')
 @Controller()
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Public()
   @Post('auth/register')
@@ -37,62 +43,40 @@ export class AuthController {
   @Post('auth/login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Inicio de sesión' })
-  async login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+  async login(
+    @Body() loginDto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { refreshToken, ...result } = await this.authService.login(loginDto);
+    this.setRefreshCookie(res, refreshToken);
+    return result;
   }
 
   @Public()
   @Post('auth/refresh')
   @UseGuards(RefreshAuthGuard)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Renovar access token usando refresh token' })
-  async refresh(@CurrentUser() user: any) {
-    return this.authService.refreshToken(user.refreshToken);
+  @ApiOperation({ summary: 'Renovar access token usando la cookie de refresh' })
+  async refresh(
+    @CurrentUser('refreshToken') refreshToken: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { refreshToken: newRefreshToken, ...result } =
+      await this.authService.refreshToken(refreshToken);
+    this.setRefreshCookie(res, newRefreshToken);
+    return result;
   }
 
+  @Public()
   @Post('auth/logout')
   @HttpCode(HttpStatus.OK)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Cerrar sesión (revocar token)' })
-  async logout(@Req() req: Request) {
-    const token = req.headers.authorization?.replace('Bearer ', '') || '';
-    return this.authService.logout(token);
-  }
-
-  @Public()
-  @Post('oauth/authorize')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Iniciar flujo OAuth2 con PKCE - generar código de autorización',
-    description: 'Este endpoint inicia el flujo OAuth2 Authorization Code con PKCE. El cliente (SPA) debe generar un code_verifier y code_challenge (S256) antes de llamar a este endpoint.',
-  })
-  async authorize(@Body() dto: OAuthAuthorizeDto) {
-    return this.authService.authorize(
-      dto.clientId,
-      dto.redirectUri,
-      dto.codeChallenge,
-      dto.codeChallengeMethod || 'S256',
-      dto.state,
-    );
-  }
-
-  @Public()
-  @Post('oauth/token')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Intercambiar código de autorización por tokens',
-    description: 'Este endpoint intercambia el código de autorización (obtenido de /oauth/authorize) por un access token y refresh token. El cliente debe enviar el code_verifier original para verificación PKCE.',
-  })
-  async token(@Body() dto: OAuthTokenDto) {
-    if (dto.grantType === 'refresh_token') {
-      return this.authService.refreshToken(dto.refreshToken || '');
-    }
-    return this.authService.exchangeCodeForToken(
-      dto.code || '',
-      dto.codeVerifier || '',
-      dto.clientId,
-      dto.redirectUri,
-    );
+  @ApiOperation({ summary: 'Cerrar sesión y revocar el refresh token' })
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const cookies = req.cookies as Record<string, string | undefined>;
+    const refreshToken = cookies?.[REFRESH_COOKIE_NAME];
+    const result = await this.authService.logout(refreshToken);
+    this.clearRefreshCookie(res);
+    return result;
   }
 
   @Public()
@@ -117,5 +101,25 @@ export class AuthController {
   @ApiOperation({ summary: 'Verificar email con token' })
   async verifyEmail(@Body('token') token: string) {
     return this.authService.verifyEmail(token);
+  }
+
+  private setRefreshCookie(res: Response, token: string): void {
+    res.cookie(REFRESH_COOKIE_NAME, token, {
+      ...this.baseCookieOptions(),
+      maxAge: REFRESH_COOKIE_MAX_AGE,
+    });
+  }
+
+  private clearRefreshCookie(res: Response): void {
+    res.clearCookie(REFRESH_COOKIE_NAME, this.baseCookieOptions());
+  }
+
+  private baseCookieOptions(): CookieOptions {
+    return {
+      httpOnly: true,
+      secure: this.configService.get<string>('app.nodeEnv') === 'production',
+      sameSite: 'lax',
+      path: `/api/${this.configService.get<string>('app.apiVersion') || 'v1'}/auth`,
+    };
   }
 }

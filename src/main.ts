@@ -43,7 +43,7 @@ async function bootstrap() {
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('NestJS API - Skeleton')
-    .setDescription('API REST con autenticación OAuth2/PKCE, RBAC y más')
+    .setDescription('API REST con autenticación JWT (access + refresh token), RBAC y más')
     .setVersion('1.0')
     .addBearerAuth(
       {
@@ -57,7 +57,7 @@ async function bootstrap() {
       'JWT-auth',
     )
     .addSecurityRequirements('JWT-auth')
-    .addTag('Autenticación', 'Endpoints de autenticación y OAuth2')
+    .addTag('Autenticación', 'Endpoints de autenticación con JWT')
     .addTag('Usuarios', 'Gestión de usuarios (solo admin)')
     .build();
 

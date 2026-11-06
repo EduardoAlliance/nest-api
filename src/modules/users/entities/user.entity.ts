@@ -42,14 +42,23 @@ export class User {
   @Column({ type: 'boolean', default: false })
   emailVerified: boolean;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  emailVerificationToken: string;
+  @Column({ type: 'varchar', length: 255, nullable: true, select: false })
+  emailVerificationToken: string | null;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  passwordResetToken: string;
+  @Column({ type: 'varchar', length: 255, nullable: true, select: false })
+  passwordResetToken: string | null;
 
   @Column({ type: 'timestamp', nullable: true })
-  passwordResetExpires: Date;
+  passwordResetExpires: Date | null;
+
+  @Column({ type: 'varchar', length: 64, nullable: true, select: false })
+  refreshTokenHash: string | null;
+
+  @Column({ type: 'varchar', length: 64, nullable: true, select: false })
+  previousRefreshTokenHash: string | null;
+
+  @Column({ type: 'timestamp', nullable: true, select: false })
+  refreshTokenRotatedAt: Date | null;
 
   @CreateDateColumn()
   createdAt: Date;

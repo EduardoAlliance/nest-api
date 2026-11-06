@@ -1,222 +1,145 @@
-# NestJS API Skeleton
+# NestJS API — Backend de Autenticación y Gestión de Usuarios
 
-API REST profesional con autenticación OAuth2/PKCE, RBAC, y arquitectura limpia lista para producción.
+Backend REST desarrollado con **NestJS y TypeScript** que provee autenticación segura y administración de usuarios para aplicaciones web modernas. Está diseñado para funcionar como API independiente de un frontend SPA (por ejemplo, React), aplicando buenas prácticas de arquitectura, validación y seguridad.
 
-## Stack Tecnológico
+El sistema permite que los usuarios se registren e inicien sesión con sus credenciales, mantengan sesiones seguras mediante tokens de acceso y renovación, y que los administradores gestionen el ciclo de vida completo de las cuentas.
 
-- **Runtime:** Node.js 20+
-- **Framework:** NestJS 11 (TypeScript)
-- **ORM:** TypeORM con MySQL 8
-- **Autenticación:** OAuth2 con PKCE, JWT (access + refresh token rotativo)
-- **Cache:** Redis
-- **Logging:** Winston (consola + archivos rotativos)
-- **Documentación:** Swagger/OpenAPI
-- **Email:** Mailpit (desarrollo)
-- **Contenedores:** Docker + Docker Compose
+---
 
-## Estructura del Proyecto
+## ¿Qué resuelve?
 
-```
-src/
-├── config/              # Configuración de módulos (app, db, jwt, redis, etc.)
-├── database/
-│   ├── seeds/           # Seeders (usuario admin por defecto)
-│   └── typeorm.config.ts
-├── logging/             # Módulo de logging con Winston
-├── modules/
-│   ├── auth/            # Autenticación (login, registro, OAuth2 PKCE, refresh, reset password)
-│   │   ├── dto/
-│   │   ├── guards/
-│   │   └── strategies/  # JWT Strategy, Refresh Strategy
-│   ├── common/          # Decoradores, Filtros, Interceptores, Guards globales
-│   │   ├── decorators/  # @Roles, @CurrentUser, @Public
-│   │   ├── filters/     # AllExceptionsFilter
-│   │   ├── guards/      # RolesGuard
-│   │   └── interceptors/ # ResponseInterceptor
-│   └── users/           # CRUD de usuarios (solo admin)
-│       ├── dto/
-│       └── entities/
-├── app.module.ts
-└── main.ts
-```
+- Centraliza la autenticación y la gestión de identidades en un solo servicio.
+- Desacopla el backend del frontend mediante una API REST documentada.
+- Protege las operaciones administrativas con permisos por rol.
+- Ofrece una base escalable y mantenible para productos que necesitan cuentas de usuario.
 
-## Requisitos Previos
+---
 
-- Node.js 20+
-- pnpm
-- Docker y Docker Compose (opcional, para entorno completo)
-- MySQL 8 (si no usas Docker)
+## Características principales
 
-## Instalación y Ejecución
+- **Registro e inicio de sesión** con email y contraseña.
+- **Sesiones con JWT**: token de acceso de corta duración y token de renovación seguro en cookie HttpOnly.
+- **Renovación de sesión** sin volver a solicitar credenciales, con rotación de tokens.
+- **Recuperación y cambio de contraseña** por correo.
+- **Verificación de email** con enlaces al frontend.
+- **Gestión de usuarios**: crear, listar, consultar, actualizar, eliminar y restaurar.
+- **Eliminación lógica** para conservar el historial de las cuentas.
+- **Control de acceso por roles** (administrador, usuario y moderador).
+- **Validación automática** de los datos de entrada.
+- **Respuestas estandarizadas** y manejo centralizado de errores.
+- **Documentación interactiva** de la API con Swagger.
+- **Registro de actividad y errores** con Winston.
+- **Caché de consultas** para mejorar el rendimiento.
+- **Entorno reproducible** con Docker.
 
-### 1. Usando Docker (Recomendado)
+---
 
-```bash
-# Clonar el repositorio
-git clone <repo-url> nest-api
-cd nest-api
+## Stack tecnológico
 
-# Copiar variables de entorno
-cp .env.example .env
+| Área | Tecnología |
+|------|------------|
+| Lenguaje | TypeScript |
+| Framework | NestJS 11 |
+| Base de datos | MySQL 8 |
+| ORM | TypeORM |
+| Autenticación | JWT + Passport |
+| Documentación | Swagger / OpenAPI |
+| Logging | Winston |
+| Caché | Cache Manager |
+| Contenedores | Docker y Docker Compose |
+| Gestor de paquetes | pnpm |
 
-# Iniciar todos los servicios
-docker compose up -d
+---
 
-# Ejecutar migraciones (se ejecutan automáticamente con synchronize: true en desarrollo)
-# Ejecutar seeder para crear usuario admin
-docker compose exec app pnpm run seed
-```
+## Arquitectura
 
-### 2. Sin Docker (Desarrollo Local)
+El proyecto sigue una **arquitectura modular**, donde cada responsabilidad está separada en su propio módulo:
 
-```bash
-# Instalar dependencias
-pnpm install
+- **Autenticación:** login, registro, renovación de sesión, cierre de sesión y recuperación de contraseña.
+- **Usuarios:** administración de cuentas y perfil del usuario autenticado.
+- **Módulo común:** controles de acceso, validaciones, manejo de errores y formato uniforme de respuestas.
+- **Configuración:** centralización de variables de entorno para base de datos, seguridad, correo y aplicación.
+- **Logging:** registro estructurado de eventos y errores.
 
-# Configurar variables de entorno
-cp .env.example .env
-# Editar .env con tus credenciales de MySQL y Redis
+Esta organización facilita el mantenimiento, las pruebas y la incorporación de nuevas funcionalidades sin afectar el resto del sistema.
 
-# Iniciar en modo desarrollo
-pnpm run start:dev
-```
+---
 
-### Comandos Disponibles
+## Seguridad
 
-```bash
-# Desarrollo
-pnpm run start:dev         # Iniciar con hot-reload
-pnpm run start:debug       # Iniciar en modo debug
-pnpm run build             # Compilar a JavaScript
+- Contraseñas almacenadas con **hash bcrypt**, nunca en texto plano.
+- Tokens **JWT firmados** con expiración definida.
+- Refresh token en **cookie HttpOnly** con rotación y detección de reutilización.
+- **Control de acceso por roles** aplicado de forma global.
+- **Validación y filtrado** de los datos que ingresan a la API.
+- **Límite de peticiones** para mitigar abusos.
+- Cabeceras de seguridad con **Helmet**.
+- **CORS configurable** para permitir únicamente los orígenes autorizados.
+- **Soft delete** para evitar la pérdida definitiva de información.
 
-# Base de datos
-pnpm run seed              # Ejecutar seeder (crea usuario admin)
-pnpm run migration:generate  # Generar migración
-pnpm run migration:run       # Ejecutar migraciones
-pnpm run migration:revert    # Revertir última migración
+---
 
-# Calidad
-pnpm run lint              # Verificar linting
-```
+## Roles y permisos
 
-## Usuario Admin por Defecto
+| Rol | Alcance |
+|-----|---------|
+| **Administrador** | Gestión completa de usuarios y acceso a todas las operaciones administrativas. |
+| **Usuario** | Acceso a su propio perfil y a las funcionalidades disponibles para su cuenta. |
+| **Moderador** | Rol definido en el sistema, reservado para futuras capacidades de moderación. |
 
-Después de ejecutar el seeder:
+---
 
-- **Email:** admin@example.com
-- **Password:** Admin123!
+## Alcance funcional de la API
 
-## Endpoints de la API
+La API expone dos grandes áreas:
 
-### Autenticación (`/api/v1/auth`)
+**Autenticación**
+- Registro de nuevos usuarios.
+- Inicio y cierre de sesión.
+- Renovación del token de acceso.
+- Solicitud y aplicación de reseteo de contraseña.
+- Verificación de email.
 
-| Método | Endpoint               | Auth     | Descripción                          |
-|--------|------------------------|----------|--------------------------------------|
-| POST   | `/auth/register`       | Público  | Registrar nuevo usuario              |
-| POST   | `/auth/login`          | Público  | Iniciar sesión                       |
-| POST   | `/auth/refresh`        | Refresh  | Renovar access token                 |
-| POST   | `/auth/logout`         | JWT      | Cerrar sesión                        |
-| POST   | `/auth/forgot-password`| Público  | Solicitar reseteo de contraseña      |
-| POST   | `/auth/reset-password` | Público  | Resetear contraseña con token        |
-| POST   | `/auth/verify-email`   | Público  | Verificar email con token            |
+**Usuarios**
+- Consulta y actualización del perfil propio.
+- Creación, listado paginado, detalle, actualización y eliminación de usuarios.
+- Restauración de usuarios eliminados.
+- Búsqueda y filtros por nombre, email, rol y estado.
 
-### OAuth2 PKCE (`/api/v1/oauth`)
+Todas las operaciones administrativas requieren rol de administrador.
 
-| Método | Endpoint          | Auth    | Descripción                                    |
-|--------|-------------------|---------|------------------------------------------------|
-| POST   | `/oauth/authorize`| Público | Generar código de autorización (inicia flujo)  |
-| POST   | `/oauth/token`    | Público | Intercambiar código por tokens                 |
+---
 
-### Usuarios (`/api/v1/users`)
+## Puesta en marcha
 
-| Método | Endpoint             | Auth | Rol    | Descripción                     |
-|--------|----------------------|------|--------|---------------------------------|
-| POST   | `/users`             | JWT  | admin  | Crear usuario                   |
-| GET    | `/users`             | JWT  | admin  | Listar usuarios (paginado)      |
-| GET    | `/users/profile`     | JWT  | *      | Obtener perfil propio           |
-| GET    | `/users/:id`         | JWT  | admin  | Obtener usuario por ID          |
-| PATCH  | `/users/:id`         | JWT  | admin  | Actualizar usuario              |
-| DELETE | `/users/:id`         | JWT  | admin  | Eliminar usuario (soft delete)  |
-| POST   | `/users/:id/restore` | JWT  | admin  | Restaurar usuario eliminado     |
+1. Tener instalados **Node.js 20+**, **pnpm** y, opcionalmente, **Docker**.
+2. Copiar el archivo de variables de entorno de ejemplo y ajustar las credenciales.
+3. Levantar los servicios con Docker Compose, o instalar dependencias e iniciar el proyecto en modo desarrollo.
+4. Ejecutar el seeder para crear el usuario administrador inicial.
+5. Acceder a la documentación interactiva de la API.
 
-## Documentación Swagger
+**Usuario administrador de prueba**
 
-Disponible en: `http://localhost:3000/api/docs`
+- Email: `admin@example.com`
+- Contraseña: `Admin123!`
 
-## Flujo OAuth2 con PKCE (para SPA)
+---
 
-### 1. El cliente (SPA) genera el code_verifier y code_challenge
+## Documentación de la API
 
-```javascript
-// Ejemplo en el frontend (React)
-function generatePKCE() {
-  const codeVerifier = generateRandomString(128);
-  const codeChallenge = await sha256(codeVerifier);
-  return { codeVerifier, codeChallenge };
-}
-```
+La documentación interactiva está disponible en:
 
-### 2. Solicitar código de autorización
+`http://localhost:3000/api/docs`
 
-```
-POST /api/v1/oauth/authorize
-Body: {
-  "clientId": "spa-client",
-  "redirectUri": "http://localhost:3001/callback",
-  "responseType": "code",
-  "codeChallenge": "<base64url(sha256(codeVerifier))>",
-  "codeChallengeMethod": "S256",
-  "state": "<random-state>"
-}
-```
+Desde Swagger se pueden consultar los endpoints, los modelos de datos y probar las operaciones con autenticación.
 
-### 3. Intercambiar código por tokens
 
-```
-POST /api/v1/oauth/token
-Body: {
-  "grantType": "authorization_code",
-  "code": "<authorization-code>",
-  "codeVerifier": "<original-code-verifier>",
-  "redirectUri": "http://localhost:3001/callback",
-  "clientId": "spa-client"
-}
-```
+## Despliegue
 
-## Formato de Respuesta
+El proyecto puede compilarse para producción y ejecutarse directamente con Node.js o dentro de un contenedor Docker. La configuración de variables de entorno permite adaptar la aplicación a distintos entornos sin modificar el código.
 
-Todos los endpoints devuelven:
+---
 
-```json
-{
-  "success": true,
-  "statusCode": 200,
-  "data": { ... },
-  "message": "Operación exitosa",
-  "timestamp": "2026-07-18T10:30:00Z",
-  "path": "/api/v1/auth/login"
-}
-```
+## Resumen
 
-## Variables de Entorno
-
-Ver `.env.example` para todas las variables disponibles.
-
-## Producción
-
-Para desplegar en un VPS:
-
-```bash
-# Compilar
-pnpm run build
-
-# Iniciar en producción
-NODE_ENV=production pnpm run start:prod
-```
-
-O usa el Dockerfile proporcionado con:
-
-```bash
-docker build -t nest-api .
-docker run -p 3000:3000 nest-api
-```
+**NestJS API** es una base backend completa para productos que necesitan autenticación, gestión de usuarios y permisos por rol, construida con tecnologías actuales y criterios de seguridad y mantenibilidad aptos para un entorno profesional.
